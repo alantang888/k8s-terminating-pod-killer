@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	v1 "k8s.io/api/core/v1"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,11 +23,28 @@ func main() {
 		}
 	}
 
+	// Namespace to check. If empty, it check all namespace. Can use ',' to separate namespaces.
+	targetNamespace := os.Getenv("NAMESPACE")
+
 	zero := int64(0)
 
 	clientset, err := kubernetes.NewForConfig(k8sConfig)
-	pods, _ := clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
-	for _, p := range pods.Items {
+
+	var pods []v1.Pod
+
+	if strings.TrimSpace(targetNamespace) == "" {
+		podList, _ := clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+		pods = append(pods, podList.Items...)
+	} else {
+		for _, ns := range strings.Split(targetNamespace, ",") {
+			ns := strings.TrimSpace(ns)
+			if ns != "" {
+				podList, _ := clientset.CoreV1().Pods(ns).List(context.Background(), metav1.ListOptions{})
+				pods = append(pods, podList.Items...)
+			}
+		}
+	}
+	for _, p := range pods {
 		gracePeriodSeconds := time.Duration(30)
 		if p.Spec.TerminationGracePeriodSeconds != nil {
 			gracePeriodSeconds = time.Duration(*p.Spec.TerminationGracePeriodSeconds)
