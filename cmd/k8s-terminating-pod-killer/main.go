@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -31,10 +30,10 @@ func main() {
 			gracePeriodSeconds = time.Duration(*p.Spec.TerminationGracePeriodSeconds)
 		}
 		if p.ObjectMeta.DeletionTimestamp != nil && time.Now().Sub(p.ObjectMeta.DeletionTimestamp.Time) > ((gracePeriodSeconds*time.Second)+(5*time.Minute)) {
-			fmt.Printf("Killing: %s/%s\n", p.Namespace, p.Name)
+			log.Printf("Killing: %s/%s\n", p.Namespace, p.Name)
 			err = clientset.CoreV1().Pods(p.Namespace).Delete(context.Background(), p.Name, metav1.DeleteOptions{GracePeriodSeconds: &zero})
 			if err != nil {
-				fmt.Printf("Got error when kill %s/%s. Err: %s\n", p.Namespace, p.Name, err.Error())
+				log.Printf("Got error when kill %s/%s. Err: %s\n", p.Namespace, p.Name, err.Error())
 			}
 		}
 	}
