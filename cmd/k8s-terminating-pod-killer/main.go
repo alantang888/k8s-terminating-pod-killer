@@ -26,7 +26,7 @@ func main() {
 	clientset, err := kubernetes.NewForConfig(k8sConfig)
 	pods, _ := clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	for _, p := range pods.Items {
-		if p.ObjectMeta.DeletionTimestamp != nil && time.Now().Unix()-p.ObjectMeta.DeletionTimestamp.Unix() > (5*60) {
+		if p.ObjectMeta.DeletionTimestamp != nil && time.Now().Sub(p.ObjectMeta.DeletionTimestamp.Time) > (5*time.Minute) {
 			fmt.Printf("Killing: %s/%s\n", p.Namespace, p.Name)
 			err = clientset.CoreV1().Pods(p.Namespace).Delete(context.Background(), p.Name, metav1.DeleteOptions{GracePeriodSeconds: &zero})
 			if err != nil {
