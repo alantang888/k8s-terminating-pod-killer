@@ -1,4 +1,4 @@
-module k8s-terminating-pod-killer
+module github.com/alantang888/k8s-terminating-pod-killer
 
 go 1.17
 
