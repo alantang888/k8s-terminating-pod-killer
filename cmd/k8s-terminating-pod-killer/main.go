@@ -5,6 +5,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,14 +23,18 @@ func main() {
 			Host: "http://127.0.0.1:8001",
 		}
 	}
+	clientset, err := kubernetes.NewForConfig(k8sConfig)
 
 	// Namespace to check. If empty, it check all namespace. Can use ',' to separate namespaces.
 	targetNamespace := os.Getenv("NAMESPACE")
+	// How long (minute) to wait before kill. Default 5
+	killMinute, err := strconv.Atoi(os.Getenv("KILL_MINUTE"))
+	if err != nil || killMinute < 1 {
+		log.Println("Can't parse ${KILL_MINUTE} or ${KILL_MINUTE} < 1. Set to default 5")
+		killMinute = 5
+	}
 
 	zero := int64(0)
-
-	clientset, err := kubernetes.NewForConfig(k8sConfig)
-
 	var pods []v1.Pod
 
 	if strings.TrimSpace(targetNamespace) == "" {
@@ -49,7 +54,7 @@ func main() {
 		if p.Spec.TerminationGracePeriodSeconds != nil {
 			gracePeriodSeconds = time.Duration(*p.Spec.TerminationGracePeriodSeconds)
 		}
-		if p.ObjectMeta.DeletionTimestamp != nil && time.Now().Sub(p.ObjectMeta.DeletionTimestamp.Time) > ((gracePeriodSeconds*time.Second)+(5*time.Minute)) {
+		if p.ObjectMeta.DeletionTimestamp != nil && time.Now().Sub(p.ObjectMeta.DeletionTimestamp.Time) > ((gracePeriodSeconds*time.Second)+(time.Duration(killMinute)*time.Minute)) {
 			log.Printf("Killing: %s/%s\n", p.Namespace, p.Name)
 			err = clientset.CoreV1().Pods(p.Namespace).Delete(context.Background(), p.Name, metav1.DeleteOptions{GracePeriodSeconds: &zero})
 			if err != nil {
